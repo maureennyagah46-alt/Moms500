@@ -1224,6 +1224,28 @@ function goToOTP() {
         "Verification Code",
         "Enter the code sent to your phone"
     );
+    
+    inputs.forEach(function(input, index) {
+
+        input.value = "";
+
+
+        input.addEventListener(
+            "input",
+            function() {
+
+                input.value =
+                    input.value.replace(/\D/g, "");
+
+
+                if (
+                    input.value &&
+                    index < inputs.length - 1
+                ) {
+
+                    inputs[index + 1].focus();
+
+                }
 
 function setupOTP() {
 
